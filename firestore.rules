@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read any user profile
+      allow read: if isAuthenticated();
+      // Only the user can update their own profile
+      allow write: if isOwner(userId);
+    }
+
+    // Groups collection
+    match /groups/{groupId} {
+      // Members can read group data
+      allow read: if isAuthenticated() &&
+                     request.auth.uid in resource.data.memberIds;
+      // Anyone can create a group
+      allow create: if isAuthenticated();
+      // Members can update group (e.g., add new members)
+      allow update: if isAuthenticated() &&
+                       request.auth.uid in resource.data.memberIds;
+      // Only creator can delete
+      allow delete: if isAuthenticated() &&
+                       request.auth.uid == resource.data.creatorId;
+    }
+
+    // Tasks collection
+    match /tasks/{taskId} {
+      // Anyone authenticated can read tasks
+      allow read: if isAuthenticated();
+      // Anyone can create a task
+      allow create: if isAuthenticated();
+      // Creator or assignee can update
+      allow update: if isAuthenticated() &&
+                       (request.auth.uid == resource.data.creatorId ||
+                        request.auth.uid == resource.data.assigneeId);
+      // Only creator can delete
+      allow delete: if isAuthenticated() &&
+                       request.auth.uid == resource.data.creatorId;
+    }
+
+    // Wishes collection
+    match /wishes/{wishId} {
+      // Anyone authenticated can read wishes
+      allow read: if isAuthenticated();
+      // Anyone can create a wish
+      allow create: if isAuthenticated();
+      // Owner can update/delete their wishes
+      allow update, delete: if isAuthenticated() &&
+                               request.auth.uid == resource.data.userId;
+    }
+
+    // Achievements collection
+    match /achievements/{achievementId} {
+      // Anyone authenticated can read achievements
+      allow read: if isAuthenticated();
+      // System/functions can create achievements
+      allow create: if isAuthenticated();
+      // No updates or deletes allowed
+      allow update, delete: if false;
+    }
+
+    // Task history collection
+    match /task_history/{historyId} {
+      // Anyone authenticated can read history
+      allow read: if isAuthenticated();
+      // System/functions can create history entries
+      allow create: if isAuthenticated();
+      // No updates or deletes allowed
+      allow update, delete: if false;
+    }
+  }
+}
