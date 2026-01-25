@@ -21,9 +21,8 @@ service cloud.firestore {
 
     // Groups collection
     match /groups/{groupId} {
-      // Members can read group data
-      allow read: if isAuthenticated() &&
-                     request.auth.uid in resource.data.memberIds;
+      // Any authenticated user can read groups (filtering done in app code)
+      allow read: if isAuthenticated();
       // Anyone can create a group
       allow create: if isAuthenticated();
       // Members can update group (e.g., add new members)
