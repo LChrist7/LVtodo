@@ -44,7 +44,7 @@ export default function WishesPage() {
     loadWishes();
   }, [user]);
 
-  const handleCompleteWish = async (wishId: string, cost: number) => {
+  const handleCompleteWish = async (wishId: string) => {
     if (!user) return;
 
     setCompletingWishId(wishId);
@@ -210,7 +210,7 @@ export default function WishesPage() {
 
                 {wish.status === 'active' && (
                   <button
-                    onClick={() => handleCompleteWish(wish.id, wish.cost)}
+                    onClick={() => handleCompleteWish(wish.id)}
                     disabled={
                       completingWishId === wish.id || (user?.points || 0) < wish.cost
                     }
