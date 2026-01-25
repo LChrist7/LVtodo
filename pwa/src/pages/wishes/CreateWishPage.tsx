@@ -9,11 +9,19 @@ export default function CreateWishPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [cost, setCost] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Placeholder - implement wish creation
-    navigate(ROUTES.WISHES);
+    setLoading(true);
+
+    try {
+      // Placeholder - implement wish creation
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      navigate(ROUTES.WISHES);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
