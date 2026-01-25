@@ -11,6 +11,7 @@ export default function WishesPage() {
   const [myWishes, setMyWishes] = useState<Wish[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<Wish[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [completingWishId, setCompletingWishId] = useState<string | null>(null);
   const [approvingWishId, setApprovingWishId] = useState<string | null>(null);
   const [suggestedCost, setSuggestedCost] = useState<{ [wishId: string]: number }>({});
@@ -20,6 +21,7 @@ export default function WishesPage() {
       if (!user) return;
 
       try {
+        setError(null);
         const [wishes, pending] = await Promise.all([
           getUserWishes(user.id),
           // Get pending wishes from all user's groups
@@ -36,6 +38,7 @@ export default function WishesPage() {
         setPendingApprovals(pending);
       } catch (error) {
         console.error('Failed to load wishes:', error);
+        setError('Не удалось загрузить желания. Проверьте подключение к интернету.');
       } finally {
         setLoading(false);
       }
@@ -138,6 +141,13 @@ export default function WishesPage() {
           <span className="hidden sm:inline">Создать</span>
         </Link>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
 
       {/* Pending Approvals Section */}
       {pendingApprovals.length > 0 && (
