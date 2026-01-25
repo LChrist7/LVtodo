@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Settings, BarChart3 } from 'lucide-react';
+import { LogOut, User, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { logoutUser } from '@/services/authService';
 import { ROUTES } from '@/config/constants';

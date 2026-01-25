@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, User, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getTask, updateTaskStatus, completeTask } from '@/services/taskService';
 import { Task } from '@/types';
-import { ROUTES, COLORS } from '@/config/constants';
+import { ROUTES } from '@/config/constants';
 import { formatTimeRemaining, isTaskLate } from '@/utils/gameLogic';
 
 export default function TaskDetailPage() {

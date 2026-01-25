@@ -9,7 +9,6 @@ export default function CreateWishPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [cost, setCost] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

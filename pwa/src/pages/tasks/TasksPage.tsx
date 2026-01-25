@@ -6,7 +6,6 @@ import { useGameStore } from '@/store/gameStore';
 import { getUserTasks } from '@/services/taskService';
 import { ROUTES } from '@/config/constants';
 import TaskCard from '@/components/tasks/TaskCard';
-import { Task } from '@/types';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'completed';
 
