@@ -9,7 +9,7 @@ export default function Header() {
 
   if (!user) return null;
 
-  const level = calculateLevel(user.xp);
+  const level = calculateLevel(user?.xp || 0);
   const levelColor = getLevelColor(level);
 
   return (

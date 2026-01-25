@@ -38,8 +38,8 @@ export default function HomePage() {
 
   if (!user) return null;
 
-  const level = calculateLevel(user.xp);
-  const progress = xpProgress(user.xp);
+  const level = calculateLevel(user?.xp || 0);
+  const progress = xpProgress(user?.xp || 0);
   const levelTitle = getLevelTitle(level);
 
   const activeTasks = tasks.filter(

@@ -19,19 +19,39 @@ export default function GroupDetailPage() {
     const loadGroup = async () => {
       if (!id) return;
 
-      try {
-        const [groupData, groupTasks] = await Promise.all([
-          getGroup(id),
-          getGroupTasks(id),
-        ]);
+      // Retry logic with exponential backoff
+      const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const [groupData, groupTasks] = await Promise.all([
+            getGroup(id),
+            getGroupTasks(id),
+          ]);
 
-        setGroup(groupData);
-        setTasks(groupTasks);
-      } catch (error) {
-        console.error('Failed to load group:', error);
-      } finally {
-        setLoading(false);
+          if (groupData) {
+            setGroup(groupData);
+            setTasks(groupTasks);
+            setLoading(false);
+            return;
+          }
+
+          // Wait before retry (exponential backoff: 500ms, 1000ms, 1500ms)
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          }
+        } catch (error) {
+          console.error(`Failed to load group (attempt ${attempt + 1}):`, error);
+
+          // Wait before retry on error too
+          if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          }
+        }
       }
+
+      // All retries failed
+      setGroup(null);
+      setLoading(false);
     };
 
     loadGroup();

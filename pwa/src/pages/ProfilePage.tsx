@@ -17,9 +17,9 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const level = calculateLevel(user.xp);
+  const level = calculateLevel(user?.xp || 0);
   const levelTitle = getLevelTitle(level);
-  const progress = xpProgress(user.xp);
+  const progress = xpProgress(user?.xp || 0);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
