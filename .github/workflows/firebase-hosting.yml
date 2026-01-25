@@ -24,12 +24,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: pwa/package-lock.json
 
       - name: Install dependencies
         working-directory: ./pwa
-        run: npm ci
+        run: npm install
 
       - name: Create .env file
         working-directory: ./pwa
