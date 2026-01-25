@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Settings, BarChart3 } from 'lucide-react';
+import { LogOut, User, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { logoutUser } from '@/services/authService';
 import { ROUTES } from '@/config/constants';
@@ -17,9 +17,9 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const level = calculateLevel(user.xp);
+  const level = calculateLevel(user?.xp || 0);
   const levelTitle = getLevelTitle(level);
-  const progress = xpProgress(user.xp);
+  const progress = xpProgress(user?.xp || 0);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">

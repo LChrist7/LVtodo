@@ -2,12 +2,14 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { createGroup } from '@/services/groupService';
+import { useGameStore } from '@/store/gameStore';
+import { createGroup, getGroup } from '@/services/groupService';
 import { ROUTES } from '@/config/constants';
 
 export default function CreateGroupPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { addGroup } = useGameStore();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -23,6 +25,13 @@ export default function CreateGroupPage() {
 
     try {
       const groupId = await createGroup(name, user.id, description);
+
+      // Fetch the created group and add to store
+      const newGroup = await getGroup(groupId);
+      if (newGroup) {
+        addGroup(newGroup);
+      }
+
       navigate(`${ROUTES.GROUPS}/${groupId}`);
     } catch (err: any) {
       setError(err.message || 'Ошибка создания группы');

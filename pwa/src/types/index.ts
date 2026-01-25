@@ -56,15 +56,16 @@ export interface Wish {
   id: string;
   title: string;
   description?: string;
-  cost: number;
+  cost: number; // Set to 0 initially, updated after approval
   imageURL?: string;
   createdBy: string;
   groupId: string;
-  status: 'available' | 'purchased' | 'fulfilled';
+  status: 'pending_approval' | 'active' | 'completed' | 'cancelled';
+  approvedBy: string[]; // User IDs who approved
+  costVotes: { userId: string; suggestedCost: number }[]; // Cost suggestions
   createdAt: Timestamp;
-  purchasedAt?: Timestamp;
-  purchasedBy?: string;
-  fulfilledAt?: Timestamp;
+  approvedAt?: Timestamp; // When it was approved and became active
+  completedAt?: Timestamp; // When creator "purchased" it
 }
 
 export interface Achievement {

@@ -6,7 +6,6 @@ import { useGameStore } from '@/store/gameStore';
 import { getUserTasks } from '@/services/taskService';
 import { ROUTES } from '@/config/constants';
 import TaskCard from '@/components/tasks/TaskCard';
-import { Task } from '@/types';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'completed';
 
@@ -14,6 +13,7 @@ export default function TasksPage() {
   const user = useAuthStore((state) => state.user);
   const { tasks, setTasks } = useGameStore();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
@@ -21,10 +21,12 @@ export default function TasksPage() {
       if (!user) return;
 
       try {
+        setError(null);
         const userTasks = await getUserTasks(user.id);
         setTasks(userTasks);
       } catch (error) {
         console.error('Failed to load tasks:', error);
+        setError('Не удалось загрузить задачи. Проверьте подключение к интернету.');
       } finally {
         setLoading(false);
       }
@@ -93,6 +95,13 @@ export default function TasksPage() {
           </button>
         ))}
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
 
       {/* Tasks List */}
       {loading ? (
