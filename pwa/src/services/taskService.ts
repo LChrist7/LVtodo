@@ -286,3 +286,14 @@ export const getUserStats = async (userId: string): Promise<{
     completionRate,
   };
 };
+
+/**
+ * Reset user statistics (points and XP to 0)
+ */
+export const resetUserStats = async (userId: string): Promise<void> => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    points: 0,
+    xp: 0,
+  });
+};
