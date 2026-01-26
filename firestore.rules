@@ -68,9 +68,11 @@ service cloud.firestore {
                        (request.auth.uid == resource.data.assignedBy ||
                         request.auth.uid == resource.data.assignedTo);
 
-      // Only creator can delete
-      allow delete: if isAuthenticated() &&
-                       request.auth.uid == resource.data.assignedBy;
+      // Creator can delete, OR group creator can delete (for group deletion)
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.assignedBy ||
+        request.auth.uid == get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.createdBy
+      );
     }
 
     // Wishes collection
@@ -87,8 +89,11 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds
       );
 
-      allow delete: if isAuthenticated() &&
-                       request.auth.uid == resource.data.createdBy;
+      // Creator can delete, OR group creator can delete (for group deletion)
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.createdBy ||
+        request.auth.uid == get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.createdBy
+      );
     }
 
     // Achievements collection

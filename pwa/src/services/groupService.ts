@@ -171,7 +171,9 @@ export const updateGroupSettings = async (
 };
 
 /**
- * Delete group (only creator can delete)
+ * Delete group completely (only creator can delete)
+ * Deletes all tasks, wishes, and the group itself from all members
+ * Statistics remain in user profiles
  */
 export const deleteGroup = async (
   groupId: string,
@@ -180,20 +182,34 @@ export const deleteGroup = async (
   const group = await getGroup(groupId);
 
   if (!group) {
-    throw new Error('Group not found');
+    throw new Error('Группа не найдена');
   }
 
   if (group.createdBy !== userId) {
-    throw new Error('Only the creator can delete the group');
+    throw new Error('Только создатель может удалить группу');
   }
+
+  // Delete all tasks in this group
+  const tasksQuery = query(collection(db, 'tasks'), where('groupId', '==', groupId));
+  const tasksSnapshot = await getDocs(tasksQuery);
+  const taskDeletePromises = tasksSnapshot.docs.map(taskDoc => deleteDoc(taskDoc.ref));
+
+  // Delete all wishes in this group
+  const wishesQuery = query(collection(db, 'wishes'), where('groupId', '==', groupId));
+  const wishesSnapshot = await getDocs(wishesQuery);
+  const wishDeletePromises = wishesSnapshot.docs.map(wishDoc => deleteDoc(wishDoc.ref));
+
+  // Wait for all deletions
+  await Promise.all([...taskDeletePromises, ...wishDeletePromises]);
 
   // Remove group from all members
-  for (const memberId of group.memberIds) {
-    await updateDoc(doc(db, 'users', memberId), {
+  const memberUpdatePromises = group.memberIds.map(memberId =>
+    updateDoc(doc(db, 'users', memberId), {
       groupIds: arrayRemove(groupId),
-    });
-  }
+    })
+  );
+  await Promise.all(memberUpdatePromises);
 
-  // Delete group
+  // Delete the group itself
   await deleteDoc(doc(db, 'groups', groupId));
 };

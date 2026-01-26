@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Users } from 'lucide-react';
-import { getGroup } from '@/services/groupService';
+import { ArrowLeft, Copy, Users, Trash2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { getGroup, deleteGroup } from '@/services/groupService';
 import { getGroupTasks } from '@/services/taskService';
 import { Group, Task } from '@/types';
+import { ROUTES } from '@/config/constants';
 import TaskCard from '@/components/tasks/TaskCard';
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   const [group, setGroup] = useState<Group | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const loadGroup = async () => {
@@ -62,6 +66,34 @@ export default function GroupDetailPage() {
       navigator.clipboard.writeText(group.inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!group || !user) return;
+
+    const confirmed = window.confirm(
+      `Вы уверены, что хотите удалить группу "${group.name}"?\n\n` +
+      'Это действие удалит:\n' +
+      '• Все задания группы\n' +
+      '• Все желания группы\n' +
+      '• Саму группу у всех участников\n\n' +
+      'Статистика участников (баллы, XP) сохранится.\n\n' +
+      'Это действие необратимо!'
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await deleteGroup(group.id, user.id);
+      alert('Группа успешно удалена');
+      navigate(ROUTES.GROUPS);
+    } catch (error: any) {
+      console.error('Failed to delete group:', error);
+      alert(error.message || 'Не удалось удалить группу');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -131,6 +163,32 @@ export default function GroupDetailPage() {
             </button>
           </div>
         </div>
+
+        {/* Delete Group Button (only for creator) */}
+        {user && group.createdBy === user.id && (
+          <div className="mt-4 pt-4 border-t border-dark-600">
+            <button
+              onClick={handleDeleteGroup}
+              disabled={deleting}
+              className="w-full bg-red-600/10 hover:bg-red-600/20 border border-red-600/50 text-red-400 font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Удаление...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-5 h-5" />
+                  <span>Удалить группу навсегда</span>
+                </>
+              )}
+            </button>
+            <p className="text-dark-500 text-xs text-center mt-2">
+              Удалит все задания и желания группы. Действие необратимо.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Group Tasks */}

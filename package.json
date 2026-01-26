@@ -5,6 +5,7 @@
   "scripts": {
     "deploy:firestore": "firebase deploy --only firestore --project lvtodo",
     "deploy:hosting": "cd pwa && npm run build && cd .. && firebase deploy --only hosting --project lvtodo",
+    "deploy:functions": "firebase deploy --only functions --project lvtodo",
     "deploy:all": "cd pwa && npm run build && cd .. && firebase deploy --project lvtodo",
     "emulator": "firebase emulators:start",
     "emulator:ui": "firebase emulators:start --import=./emulator-data --export-on-exit"

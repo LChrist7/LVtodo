@@ -1,18 +1,50 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, BarChart3 } from 'lucide-react';
+import { LogOut, User, BarChart3, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { logoutUser } from '@/services/authService';
+import { resetUserStats } from '@/services/taskService';
 import { ROUTES } from '@/config/constants';
 import { calculateLevel, getLevelTitle, xpProgress } from '@/utils/gameLogic';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
+  const [resetting, setResetting] = useState(false);
 
   const handleLogout = async () => {
     await logoutUser();
     logout();
     navigate(ROUTES.LOGIN);
+  };
+
+  const handleResetStats = async () => {
+    if (!user) return;
+
+    const confirmed = window.confirm(
+      'Вы уверены, что хотите обнулить статистику?\n\n' +
+      'Это действие:\n' +
+      '• Обнулит баллы (points)\n' +
+      '• Обнулит опыт (XP)\n' +
+      '• Вернет на 1 уровень\n\n' +
+      'Задания, группы и достижения сохранятся.\n\n' +
+      'Это действие необратимо!'
+    );
+
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      await resetUserStats(user.id);
+      // Update local user state
+      setUser({ ...user, points: 0, xp: 0 });
+      alert('Статистика успешно обнулена');
+    } catch (error: any) {
+      console.error('Failed to reset stats:', error);
+      alert('Не удалось обнулить статистику');
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (!user) return null;
@@ -95,6 +127,25 @@ export default function ProfilePage() {
             <span className="text-white font-medium">Статистика</span>
           </div>
           <span className="text-dark-500 group-hover:text-dark-400">→</span>
+        </button>
+
+        <button
+          onClick={handleResetStats}
+          disabled={resetting}
+          className="w-full bg-orange-600/10 hover:bg-orange-600/20 border border-orange-600/30 rounded-xl p-4 transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center">
+              {resetting ? (
+                <div className="w-5 h-5 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <RotateCcw className="w-5 h-5 text-orange-400" />
+              )}
+            </div>
+            <span className="text-orange-400 font-medium">
+              {resetting ? 'Обнуление...' : 'Обнулить статистику'}
+            </span>
+          </div>
         </button>
 
         <button

@@ -63,10 +63,10 @@ export default function WishesPage() {
     }
   };
 
-  const handleApproveWish = async (wishId: string) => {
+  const handleApproveWish = async (wishId: string, customCost?: number) => {
     if (!user) return;
 
-    const cost = suggestedCost[wishId];
+    const cost = customCost || suggestedCost[wishId];
     if (!cost || cost <= 0) {
       alert('Укажите стоимость');
       return;
@@ -77,7 +77,9 @@ export default function WishesPage() {
       await approveWish(wishId, user.id, cost);
       // Remove from pending list
       setPendingApprovals((prev) => prev.filter((w) => w.id !== wishId));
-      alert('Желание одобрено! После 2+ одобрений оно станет активным.');
+      alert('Ваш голос учтен! Желание активируется после одобрения всех участников.');
+      // Clear the input
+      setSuggestedCost({ ...suggestedCost, [wishId]: 0 });
     } catch (error: any) {
       alert(error.message || 'Ошибка при одобрении');
     } finally {
@@ -164,30 +166,67 @@ export default function WishesPage() {
                   {getStatusBadge(wish)}
                 </div>
                 <p className="text-dark-300 mb-4">{wish.description}</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    placeholder="Предложить стоимость"
-                    value={suggestedCost[wish.id] || ''}
-                    onChange={(e) =>
-                      setSuggestedCost({
-                        ...suggestedCost,
-                        [wish.id]: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    min="1"
-                    className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white"
-                  />
-                  <button
-                    onClick={() => handleApproveWish(wish.id)}
-                    disabled={approvingWishId === wish.id}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    {approvingWishId === wish.id ? 'Одобрение...' : 'Одобрить'}
-                  </button>
+
+                {/* Show average suggested price if votes exist */}
+                {wish.costVotes.length > 0 && (
+                  <div className="bg-blue-600/10 border border-blue-600/30 rounded-lg p-3 mb-4">
+                    <p className="text-blue-300 text-sm mb-2">
+                      Средняя предложенная цена:{' '}
+                      <span className="font-bold text-lg">
+                        {Math.round(
+                          wish.costVotes.reduce((sum, vote) => sum + vote.suggestedCost, 0) /
+                            wish.costVotes.length
+                        )}{' '}
+                        💰
+                      </span>
+                    </p>
+                    <button
+                      onClick={() => {
+                        const avgCost = Math.round(
+                          wish.costVotes.reduce((sum, vote) => sum + vote.suggestedCost, 0) /
+                            wish.costVotes.length
+                        );
+                        handleApproveWish(wish.id, avgCost);
+                      }}
+                      disabled={approvingWishId === wish.id}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white py-2 rounded-lg font-medium transition-colors"
+                    >
+                      {approvingWishId === wish.id
+                        ? 'Одобрение...'
+                        : 'Согласен с этой ценой'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Input for custom price */}
+                <div className="space-y-2">
+                  <p className="text-dark-400 text-sm">Или предложите свою цену:</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      placeholder="Ваша цена"
+                      value={suggestedCost[wish.id] || ''}
+                      onChange={(e) =>
+                        setSuggestedCost({
+                          ...suggestedCost,
+                          [wish.id]: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      min="1"
+                      className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white"
+                    />
+                    <button
+                      onClick={() => handleApproveWish(wish.id)}
+                      disabled={approvingWishId === wish.id}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      {approvingWishId === wish.id ? 'Одобрение...' : 'Предложить'}
+                    </button>
+                  </div>
                 </div>
+
                 <p className="text-dark-500 text-xs mt-2">
-                  Одобрено: {wish.approvedBy.length} / 2+
+                  Одобрено: {wish.approvedBy.length} участников
                 </p>
               </div>
             ))}

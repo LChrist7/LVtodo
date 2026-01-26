@@ -83,7 +83,8 @@ export const getGroupWishes = async (groupId: string): Promise<Wish[]> => {
 };
 
 /**
- * Get wishes pending approval for a group (not created by current user)
+ * Get wishes pending approval for a group (including user's own wishes)
+ * All members can suggest a price, but creator can't make the final approval
  */
 export const getPendingWishesForApproval = async (
   groupId: string,
@@ -98,10 +99,8 @@ export const getPendingWishesForApproval = async (
   const snapshot = await getDocs(q);
   const wishes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Wish));
 
-  // Filter out wishes created by current user and already approved by them
-  return wishes.filter(
-    (wish) => wish.createdBy !== userId && !wish.approvedBy.includes(userId)
-  );
+  // Show all wishes that user hasn't approved yet
+  return wishes.filter((wish) => !wish.approvedBy.includes(userId));
 };
 
 /**
@@ -131,10 +130,10 @@ export const approveWish = async (
 
     if (groupDoc.exists()) {
       const group = groupDoc.data();
-      const requiredApprovals = group.memberIds.length - 1; // All members except creator
+      const requiredApprovals = group.memberIds.length; // ALL members must approve
 
-      // Check if all required members have approved
-      if (wish.approvedBy.length >= requiredApprovals) {
+      // Check if all members have approved AND last approval was NOT from creator
+      if (wish.approvedBy.length >= requiredApprovals && userId !== wish.createdBy) {
         // Calculate average cost from all votes
         const totalCost = wish.costVotes.reduce((sum, vote) => sum + vote.suggestedCost, 0);
         const avgCost = Math.round(totalCost / wish.costVotes.length);
