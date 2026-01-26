@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getTask, updateTaskStatus, completeTask } from '@/services/taskService';
+import { getTask, updateTaskStatus, completeTask, confirmTask } from '@/services/taskService';
 import { Task } from '@/types';
 import { ROUTES } from '@/config/constants';
 import { formatTimeRemaining, isTaskLate } from '@/utils/gameLogic';
@@ -51,10 +51,26 @@ export default function TaskDetailPage() {
     try {
       const deadline = task.deadline.toDate();
       const late = isTaskLate(deadline);
-      await completeTask(task.id, user.id, late);
-      navigate(ROUTES.TASKS);
+      await completeTask(task.id, late);
+      setTask({ ...task, status: late ? 'late' : 'completed' });
     } catch (error) {
       console.error('Failed to complete task:', error);
+      alert('Не удалось завершить задание');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!task || !user) return;
+    setActionLoading(true);
+    try {
+      const { points, xp } = await confirmTask(task.id, user.id);
+      alert(`Задание подтверждено! Исполнитель получил ${points} баллов и ${xp} XP`);
+      navigate(ROUTES.TASKS);
+    } catch (error) {
+      console.error('Failed to confirm task:', error);
+      alert('Не удалось подтвердить задание');
     } finally {
       setActionLoading(false);
     }
@@ -84,6 +100,7 @@ export default function TaskDetailPage() {
   const late = isTaskLate(deadline);
   const timeRemaining = formatTimeRemaining(deadline);
   const isAssignedToMe = user?.id === task.assignedTo;
+  const isCreatedByMe = user?.id === task.assignedBy;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -139,34 +156,49 @@ export default function TaskDetailPage() {
         </div>
 
         {/* Actions */}
-        {isAssignedToMe && (
-          <div className="flex gap-3">
-            {task.status === 'pending' && (
-              <button
-                onClick={handleStart}
-                disabled={actionLoading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
+        <div className="flex gap-3">
+          {/* Buttons for assignee (executor) */}
+          {isAssignedToMe && task.status === 'pending' && (
+            <button
+              onClick={handleStart}
+              disabled={actionLoading}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-5 h-5" />
+              <span>Начать</span>
+            </button>
+          )}
+          {isAssignedToMe && task.status === 'in_progress' && (
+            <button
+              onClick={handleComplete}
+              disabled={actionLoading}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {actionLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
                 <CheckCircle className="w-5 h-5" />
-                <span>Начать</span>
-              </button>
-            )}
-            {task.status === 'in_progress' && (
-              <button
-                onClick={handleComplete}
-                disabled={actionLoading}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {actionLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <CheckCircle className="w-5 h-5" />
-                )}
-                <span>Завершить</span>
-              </button>
-            )}
-          </div>
-        )}
+              )}
+              <span>Завершить</span>
+            </button>
+          )}
+
+          {/* Button for assigner (creator) to confirm */}
+          {isCreatedByMe && (task.status === 'completed' || task.status === 'late') && (
+            <button
+              onClick={handleConfirm}
+              disabled={actionLoading}
+              className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {actionLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <CheckCircle className="w-5 h-5" />
+              )}
+              <span>Подтвердить выполнение</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

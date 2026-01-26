@@ -15,8 +15,14 @@ service cloud.firestore {
     match /users/{userId} {
       // Anyone authenticated can read any user profile
       allow read: if isAuthenticated();
-      // Only the user can update their own profile
-      allow write: if isOwner(userId);
+      // User can update their own profile, OR
+      // Others can update points/xp (for task rewards)
+      allow update: if isAuthenticated() && (
+        isOwner(userId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'xp'])
+      );
+      // Only user can create/delete their profile
+      allow create, delete: if isOwner(userId);
     }
 
     // Groups collection
