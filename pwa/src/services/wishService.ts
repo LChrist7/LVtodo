@@ -125,18 +125,27 @@ export const approveWish = async (
   if (wishDoc.exists()) {
     const wish = wishDoc.data() as Wish;
 
-    // Need at least 2 approvals (excluding creator)
-    if (wish.approvedBy.length >= 2) {
-      // Calculate average cost from all votes
-      const totalCost = wish.costVotes.reduce((sum, vote) => sum + vote.suggestedCost, 0);
-      const avgCost = Math.round(totalCost / wish.costVotes.length);
+    // Get group to check how many members need to approve
+    const groupRef = doc(db, 'groups', wish.groupId);
+    const groupDoc = await getDoc(groupRef);
 
-      // Activate the wish
-      await updateDoc(wishRef, {
-        status: 'active',
-        cost: avgCost,
-        approvedAt: serverTimestamp(),
-      });
+    if (groupDoc.exists()) {
+      const group = groupDoc.data();
+      const requiredApprovals = group.memberIds.length - 1; // All members except creator
+
+      // Check if all required members have approved
+      if (wish.approvedBy.length >= requiredApprovals) {
+        // Calculate average cost from all votes
+        const totalCost = wish.costVotes.reduce((sum, vote) => sum + vote.suggestedCost, 0);
+        const avgCost = Math.round(totalCost / wish.costVotes.length);
+
+        // Activate the wish
+        await updateDoc(wishRef, {
+          status: 'active',
+          cost: avgCost,
+          approvedAt: serverTimestamp(),
+        });
+      }
     }
   }
 };

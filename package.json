@@ -1,0 +1,13 @@
+{
+  "name": "lvtodo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy:firestore": "firebase deploy --only firestore --project lvtodo",
+    "deploy:hosting": "cd pwa && npm run build && cd .. && firebase deploy --only hosting --project lvtodo",
+    "deploy:all": "cd pwa && npm run build && cd .. && firebase deploy --project lvtodo",
+    "emulator": "firebase emulators:start",
+    "emulator:ui": "firebase emulators:start --import=./emulator-data --export-on-exit"
+  },
+  "description": "LVTodo - Gamified task management PWA"
+}

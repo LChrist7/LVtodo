@@ -15,28 +15,41 @@ service cloud.firestore {
     match /users/{userId} {
       // Anyone authenticated can read any user profile
       allow read: if isAuthenticated();
-      // User can update their own profile, OR
-      // Others can update points/xp (for task rewards)
+
+      // User can create their own profile
+      allow create: if isOwner(userId);
+
+      // User can update their own profile completely, OR
+      // Others can update specific fields for game mechanics
       allow update: if isAuthenticated() && (
         isOwner(userId) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'xp'])
+        // Allow updating points and/or xp (task rewards)
+        request.resource.data.diff(resource.data).affectedKeys().hasAll(['points', 'xp']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp']) ||
+        // Allow updating groupIds (when joining groups)
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['groupIds'])
       );
-      // Only user can create/delete their profile
-      allow create, delete: if isOwner(userId);
+
+      // Only user can delete their profile
+      allow delete: if isOwner(userId);
     }
 
     // Groups collection
     match /groups/{groupId} {
       // Any authenticated user can read groups (filtering done in app code)
       allow read: if isAuthenticated();
+
       // Anyone can create a group
       allow create: if isAuthenticated();
+
       // Members can update group, OR anyone can join by adding themselves to memberIds
       allow update: if isAuthenticated() && (
         request.auth.uid in resource.data.memberIds ||
         (request.auth.uid in request.resource.data.memberIds &&
          !(request.auth.uid in resource.data.memberIds))
       );
+
       // Only creator can delete
       allow delete: if isAuthenticated() &&
                        request.auth.uid == resource.data.createdBy;
@@ -46,12 +59,15 @@ service cloud.firestore {
     match /tasks/{taskId} {
       // Anyone authenticated can read tasks
       allow read: if isAuthenticated();
+
       // Anyone can create a task
       allow create: if isAuthenticated();
-      // Creator or assignee can update
+
+      // Creator (assignedBy) or Executor (assignedTo) can update
       allow update: if isAuthenticated() &&
                        (request.auth.uid == resource.data.assignedBy ||
                         request.auth.uid == resource.data.assignedTo);
+
       // Only creator can delete
       allow delete: if isAuthenticated() &&
                        request.auth.uid == resource.data.assignedBy;
@@ -61,13 +77,16 @@ service cloud.firestore {
     match /wishes/{wishId} {
       // Anyone authenticated can read wishes
       allow read: if isAuthenticated();
+
       // Anyone can create a wish
       allow create: if isAuthenticated();
+
       // Creator can update/delete, OR group members can approve
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.createdBy ||
         request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds
       );
+
       allow delete: if isAuthenticated() &&
                        request.auth.uid == resource.data.createdBy;
     }
@@ -76,17 +95,17 @@ service cloud.firestore {
     match /achievements/{achievementId} {
       // Anyone authenticated can read achievements
       allow read: if isAuthenticated();
-      // System/functions can create achievements
+      // Anyone can create achievements
       allow create: if isAuthenticated();
       // No updates or deletes allowed
       allow update, delete: if false;
     }
 
     // Task history collection
-    match /task_history/{historyId} {
+    match /taskHistory/{historyId} {
       // Anyone authenticated can read history
       allow read: if isAuthenticated();
-      // System/functions can create history entries
+      // Anyone can create history entries
       allow create: if isAuthenticated();
       // No updates or deletes allowed
       allow update, delete: if false;

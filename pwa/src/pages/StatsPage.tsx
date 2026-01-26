@@ -1,19 +1,52 @@
+import { useEffect, useState } from 'react';
 import { ArrowLeft, TrendingUp, Target, Zap, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { getUserStats } from '@/services/taskService';
+import { calculateLevel, xpProgress } from '@/utils/gameLogic';
 
 export default function StatsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-
-  // Placeholder stats
-  const stats = {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
     totalTasksCompleted: 0,
     totalTasksLate: 0,
+    totalTasksConfirmed: 0,
     currentStreak: 0,
     longestStreak: 0,
     completionRate: 0,
-  };
+  });
+
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!user) return;
+
+      try {
+        const userStats = await getUserStats(user.id);
+        setStats(userStats);
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+  }, [user]);
+
+  const level = calculateLevel(user?.xp || 0);
+  const progress = xpProgress(user?.xp || 0);
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="text-center py-12">
+          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -79,12 +112,12 @@ export default function StatsPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-dark-300">Уровень</span>
-              <span className="text-white font-semibold">{user?.level || 1}</span>
+              <span className="text-white font-semibold">{level}</span>
             </div>
             <div className="w-full bg-dark-700 rounded-full h-2">
               <div
                 className="bg-primary-600 rounded-full h-2"
-                style={{ width: '0%' }}
+                style={{ width: `${progress}%` }}
               ></div>
             </div>
           </div>

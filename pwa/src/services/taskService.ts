@@ -53,12 +53,28 @@ export const getTask = async (taskId: string): Promise<Task | null> => {
 };
 
 /**
- * Get tasks for a user
+ * Get tasks assigned TO a user (where user is executor)
  */
 export const getUserTasks = async (userId: string): Promise<Task[]> => {
   const q = query(
     collection(db, 'tasks'),
     where('assignedTo', '==', userId),
+    orderBy('deadline', 'asc')
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Task)
+  );
+};
+
+/**
+ * Get tasks assigned BY a user (where user is creator)
+ */
+export const getCreatedTasks = async (userId: string): Promise<Task[]> => {
+  const q = query(
+    collection(db, 'tasks'),
+    where('assignedBy', '==', userId),
     orderBy('deadline', 'asc')
   );
 
@@ -176,4 +192,97 @@ export const confirmTask = async (
   });
 
   return { points, xp };
+};
+
+/**
+ * Dispute task completion (by assigner) - return to pending
+ */
+export const disputeTask = async (taskId: string): Promise<void> => {
+  await updateTaskStatus(taskId, 'pending');
+};
+
+/**
+ * Get user statistics
+ */
+export const getUserStats = async (userId: string): Promise<{
+  totalTasksCompleted: number;
+  totalTasksLate: number;
+  totalTasksConfirmed: number;
+  currentStreak: number;
+  longestStreak: number;
+  completionRate: number;
+}> => {
+  // Get all tasks for this user
+  const allTasks = await getUserTasks(userId);
+
+  const totalTasksCompleted = allTasks.filter(t => t.status === 'completed' || t.status === 'confirmed').length;
+  const totalTasksLate = allTasks.filter(t => t.status === 'late').length;
+  const totalTasksConfirmed = allTasks.filter(t => t.status === 'confirmed').length;
+
+  const totalTasks = allTasks.length;
+  const completionRate = totalTasks > 0 ? Math.round((totalTasksConfirmed / totalTasks) * 100) : 0;
+
+  // Calculate streaks from task history
+  const historyQuery = query(
+    collection(db, 'taskHistory'),
+    where('userId', '==', userId),
+    where('action', '==', 'confirmed'),
+    orderBy('timestamp', 'desc')
+  );
+
+  const historySnapshot = await getDocs(historyQuery);
+  const completedDates = historySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return data.timestamp?.toDate() || new Date();
+  });
+
+  // Calculate current and longest streak
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let tempStreak = 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const uniqueDates = [...new Set(completedDates.map(d => {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  }))].sort((a, b) => b - a);
+
+  // Calculate current streak
+  let lastDate = today.getTime();
+  for (const dateTime of uniqueDates) {
+    const diff = Math.floor((lastDate - dateTime) / (1000 * 60 * 60 * 24));
+    if (diff <= 1) {
+      currentStreak++;
+      lastDate = dateTime;
+    } else {
+      break;
+    }
+  }
+
+  // Calculate longest streak
+  if (uniqueDates.length > 0) {
+    tempStreak = 1;
+    longestStreak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const diff = Math.floor((uniqueDates[i - 1] - uniqueDates[i]) / (1000 * 60 * 60 * 24));
+      if (diff === 1) {
+        tempStreak++;
+        longestStreak = Math.max(longestStreak, tempStreak);
+      } else {
+        tempStreak = 1;
+      }
+    }
+  }
+
+  return {
+    totalTasksCompleted,
+    totalTasksLate,
+    totalTasksConfirmed,
+    currentStreak,
+    longestStreak,
+    completionRate,
+  };
 };

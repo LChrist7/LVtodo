@@ -55,6 +55,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "assignedBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "deadline",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "groupId",
           "order": "ASCENDING"
         },
@@ -65,7 +79,7 @@
       ]
     },
     {
-      "collectionGroup": "task_history",
+      "collectionGroup": "taskHistory",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -73,11 +87,11 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "groupId",
+          "fieldPath": "action",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "completedAt",
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]
