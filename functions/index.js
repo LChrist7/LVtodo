@@ -1,33 +1,42 @@
-const functions = require('firebase-functions');
+const {onDocumentCreated, onDocumentUpdated} = require('firebase-functions/v2/firestore');
+const {defineString, defineSecret} = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 
 admin.initializeApp();
 
-// Email configuration
-// ВАЖНО: Замените эти значения на свои реальные данные SMTP сервера
-const EMAIL_CONFIG = {
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER || 'your-email@gmail.com',
-    pass: process.env.SMTP_PASSWORD || 'your-app-password'
-  }
-};
+// Define configuration parameters
+// For local development, create a .env file in functions/ directory
+const smtpHost = defineString('SMTP_HOST', {
+  description: 'SMTP server hostname',
+  default: 'smtp.gmail.com'
+});
 
-const transporter = nodemailer.createTransport(EMAIL_CONFIG);
+const smtpPort = defineString('SMTP_PORT', {
+  description: 'SMTP server port',
+  default: '587'
+});
+
+const smtpUser = defineString('SMTP_USER', {
+  description: 'SMTP username/email'
+});
+
+// Use defineSecret for sensitive data like passwords
+const smtpPassword = defineSecret('SMTP_PASSWORD');
 
 /**
  * Cloud Function that triggers when a new task is created
  * Sends an email notification to the executor (assignedTo user)
  */
-exports.sendTaskNotification = functions.firestore
-  .document('tasks/{taskId}')
-  .onCreate(async (snap, context) => {
+exports.sendTaskNotification = onDocumentCreated(
+  {
+    document: 'tasks/{taskId}',
+    secrets: [smtpPassword], // Declare secrets used by this function
+  },
+  async (event) => {
     try {
-      const task = snap.data();
-      const taskId = context.params.taskId;
+      const task = event.data.data();
+      const taskId = event.params.taskId;
 
       // Get executor (assignedTo) user data
       const executorDoc = await admin.firestore()
@@ -42,6 +51,11 @@ exports.sendTaskNotification = functions.firestore
 
       const executor = executorDoc.data();
       const executorEmail = executor.email;
+
+      if (!executorEmail) {
+        console.error('Executor has no email:', task.assignedTo);
+        return null;
+      }
 
       // Get assigner (assignedBy) user data for display name
       const assignerDoc = await admin.firestore()
@@ -75,9 +89,20 @@ exports.sendTaskNotification = functions.firestore
       const difficultyText = task.difficulty === 'easy' ? 'Легкая' : 'Сложная';
       const pointsText = task.difficulty === 'easy' ? '10' : '25';
 
+      // Create email transporter using params
+      const transporter = nodemailer.createTransport({
+        host: smtpHost.value(),
+        port: parseInt(smtpPort.value()),
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: smtpUser.value(),
+          pass: smtpPassword.value()
+        }
+      });
+
       // Email content
       const mailOptions = {
-        from: `"LVTodo" <${EMAIL_CONFIG.auth.user}>`,
+        from: `"LVTodo" <${smtpUser.value()}>`,
         to: executorEmail,
         subject: `Новое задание: ${task.title}`,
         html: `
@@ -174,24 +199,28 @@ ${task.description || ''}
       console.log('Email sent successfully:', info.messageId);
       console.log(`Task notification sent to ${executorEmail} for task: ${task.title}`);
 
-      return { success: true, messageId: info.messageId };
+      return {success: true, messageId: info.messageId};
 
     } catch (error) {
       console.error('Error sending task notification:', error);
-      return { success: false, error: error.message };
+      return {success: false, error: error.message};
     }
-  });
+  }
+);
 
 /**
- * Optional: Cloud Function to send wish approval notifications
+ * Cloud Function to send wish approval notifications
  * Sends email when wish status changes to 'active' (approved)
  */
-exports.sendWishApprovalNotification = functions.firestore
-  .document('wishes/{wishId}')
-  .onUpdate(async (change, context) => {
+exports.sendWishApprovalNotification = onDocumentUpdated(
+  {
+    document: 'wishes/{wishId}',
+    secrets: [smtpPassword],
+  },
+  async (event) => {
     try {
-      const oldWish = change.before.data();
-      const newWish = change.after.data();
+      const oldWish = event.data.before.data();
+      const newWish = event.data.after.data();
 
       // Only trigger if wish just became active (approved)
       if (oldWish.status !== 'active' && newWish.status === 'active') {
@@ -209,6 +238,11 @@ exports.sendWishApprovalNotification = functions.firestore
         const creator = creatorDoc.data();
         const creatorEmail = creator.email;
 
+        if (!creatorEmail) {
+          console.error('Creator has no email:', newWish.createdBy);
+          return null;
+        }
+
         // Get group name
         const groupDoc = await admin.firestore()
           .collection('groups')
@@ -217,8 +251,19 @@ exports.sendWishApprovalNotification = functions.firestore
 
         const groupName = groupDoc.exists ? groupDoc.data().name : 'Группа';
 
+        // Create email transporter
+        const transporter = nodemailer.createTransport({
+          host: smtpHost.value(),
+          port: parseInt(smtpPort.value()),
+          secure: false,
+          auth: {
+            user: smtpUser.value(),
+            pass: smtpPassword.value()
+          }
+        });
+
         const mailOptions = {
-          from: `"LVTodo" <${EMAIL_CONFIG.auth.user}>`,
+          from: `"LVTodo" <${smtpUser.value()}>`,
           to: creatorEmail,
           subject: `Желание одобрено: ${newWish.title}`,
           html: `
@@ -288,12 +333,13 @@ ${newWish.description || ''}
         const info = await transporter.sendMail(mailOptions);
         console.log('Wish approval email sent:', info.messageId);
 
-        return { success: true, messageId: info.messageId };
+        return {success: true, messageId: info.messageId};
       }
 
       return null;
     } catch (error) {
       console.error('Error sending wish approval notification:', error);
-      return { success: false, error: error.message };
+      return {success: false, error: error.message};
     }
-  });
+  }
+);

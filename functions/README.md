@@ -17,17 +17,32 @@ npm install
 1. Откройте https://myaccount.google.com/apppasswords
 2. Включите 2-Step Verification если еще не включена
 3. Создайте App Password для "Mail" → "Other (LVTodo)"
-4. Скопируйте 16-символьный пароль
+4. Скопируйте 16-символьный пароль (без пробелов)
 
-**Установите переменные окружения:**
+**Создайте .env файл для локального тестирования:**
 
 ```bash
-firebase functions:config:set \
-  smtp.host="smtp.gmail.com" \
-  smtp.port="587" \
-  smtp.user="your-email@gmail.com" \
-  smtp.password="your-16-char-app-password"
+# В папке functions/ создайте .env файл
+cp .env.example .env
 ```
+
+Отредактируйте `.env` файл:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=awzieqprixfxkjzw
+```
+
+**Для продакшена установите секрет:**
+
+```bash
+# Firebase CLI спросит пароль интерактивно
+firebase functions:secrets:set SMTP_PASSWORD --project lvtodo
+```
+
+При запросе введите ваш App Password (без пробелов).
 
 ### 3. Деплой функций
 
@@ -55,33 +70,18 @@ firebase deploy --only functions --project lvtodo
 
 ## 🔧 Локальное тестирование
 
-1. Создайте файл `.env` в папке `functions/`:
+Firebase Functions v2 автоматически читает `.env` файл!
 
-```bash
-cp .env.example .env
-# Отредактируйте .env своими данными
-```
+1. Убедитесь что `.env` файл создан (см. шаг 2 выше)
 
-2. Установите dotenv:
-
-```bash
-npm install dotenv
-```
-
-3. Обновите `index.js` (в начале файла):
-
-```javascript
-require('dotenv').config();
-```
-
-4. Запустите эмулятор:
+2. Запустите эмулятор:
 
 ```bash
 cd ..
 npm run emulator
 ```
 
-5. Создайте задание через эмулятор - email отправится!
+3. Создайте задание через эмулятор - email отправится реально!
 
 ## 📊 Мониторинг
 
@@ -102,22 +102,34 @@ firebase functions:log --project lvtodo --since 1h
 
 ### SendGrid (рекомендуется для продакшена)
 
+Обновите `.env`:
+```env
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASSWORD=your-sendgrid-api-key
+```
+
+Для продакшена:
 ```bash
-firebase functions:config:set \
-  smtp.host="smtp.sendgrid.net" \
-  smtp.port="587" \
-  smtp.user="apikey" \
-  smtp.password="your-sendgrid-api-key"
+firebase functions:secrets:set SMTP_PASSWORD --project lvtodo
+# Введите ваш SendGrid API key
 ```
 
 ### Mailgun
 
+Обновите `.env`:
+```env
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=postmaster@your-domain.mailgun.org
+SMTP_PASSWORD=your-mailgun-password
+```
+
+Для продакшена:
 ```bash
-firebase functions:config:set \
-  smtp.host="smtp.mailgun.org" \
-  smtp.port="587" \
-  smtp.user="postmaster@your-domain.mailgun.org" \
-  smtp.password="your-mailgun-password"
+firebase functions:secrets:set SMTP_PASSWORD --project lvtodo
+# Введите ваш Mailgun password
 ```
 
 Подробная документация: [EMAIL_SETUP.md](../EMAIL_SETUP.md)
