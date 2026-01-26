@@ -53,12 +53,28 @@ export const getTask = async (taskId: string): Promise<Task | null> => {
 };
 
 /**
- * Get tasks for a user
+ * Get tasks assigned TO a user (where user is executor)
  */
 export const getUserTasks = async (userId: string): Promise<Task[]> => {
   const q = query(
     collection(db, 'tasks'),
     where('assignedTo', '==', userId),
+    orderBy('deadline', 'asc')
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(
+    (doc) => ({ id: doc.id, ...doc.data() } as Task)
+  );
+};
+
+/**
+ * Get tasks assigned BY a user (where user is creator)
+ */
+export const getCreatedTasks = async (userId: string): Promise<Task[]> => {
+  const q = query(
+    collection(db, 'tasks'),
+    where('assignedBy', '==', userId),
     orderBy('deadline', 'asc')
   );
 
@@ -176,4 +192,11 @@ export const confirmTask = async (
   });
 
   return { points, xp };
+};
+
+/**
+ * Dispute task completion (by assigner) - return to pending
+ */
+export const disputeTask = async (taskId: string): Promise<void> => {
+  await updateTaskStatus(taskId, 'pending');
 };

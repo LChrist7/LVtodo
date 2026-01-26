@@ -55,6 +55,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "assignedBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "deadline",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "groupId",
           "order": "ASCENDING"
         },

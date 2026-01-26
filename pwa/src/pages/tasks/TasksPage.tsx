@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { useGameStore } from '@/store/gameStore';
-import { getUserTasks } from '@/services/taskService';
+import { Task } from '@/types';
+import { getUserTasks, getCreatedTasks } from '@/services/taskService';
 import { ROUTES } from '@/config/constants';
 import TaskCard from '@/components/tasks/TaskCard';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'completed';
+type TabType = 'assigned_to_me' | 'created_by_me';
 
 export default function TasksPage() {
   const user = useAuthStore((state) => state.user);
-  const { tasks, setTasks } = useGameStore();
+  const [assignedToMeTasks, setAssignedToMeTasks] = useState<Task[]>([]);
+  const [createdByMeTasks, setCreatedByMeTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [activeTab, setActiveTab] = useState<TabType>('assigned_to_me');
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -22,8 +25,12 @@ export default function TasksPage() {
 
       try {
         setError(null);
-        const userTasks = await getUserTasks(user.id);
-        setTasks(userTasks);
+        const [assignedTasks, createdTasks] = await Promise.all([
+          getUserTasks(user.id),
+          getCreatedTasks(user.id)
+        ]);
+        setAssignedToMeTasks(assignedTasks);
+        setCreatedByMeTasks(createdTasks);
       } catch (error) {
         console.error('Failed to load tasks:', error);
         setError('Не удалось загрузить задачи. Проверьте подключение к интернету.');
@@ -33,33 +40,35 @@ export default function TasksPage() {
     };
 
     loadTasks();
-  }, [user, setTasks]);
+  }, [user]);
 
-  const filteredTasks = tasks.filter((task) => {
+  const currentTasks = activeTab === 'assigned_to_me' ? assignedToMeTasks : createdByMeTasks;
+
+  const filteredTasks = currentTasks.filter((task) => {
     if (filter === 'all') return true;
     if (filter === 'pending') return task.status === 'pending';
     if (filter === 'in_progress') return task.status === 'in_progress';
     if (filter === 'completed')
-      return task.status === 'completed' || task.status === 'confirmed';
+      return task.status === 'completed' || task.status === 'confirmed' || task.status === 'late';
     return true;
   });
 
   const filters: { value: FilterType; label: string; count: number }[] = [
-    { value: 'all', label: 'Все', count: tasks.length },
+    { value: 'all', label: 'Все', count: currentTasks.length },
     {
       value: 'pending',
       label: 'Ожидают',
-      count: tasks.filter((t) => t.status === 'pending').length,
+      count: currentTasks.filter((t) => t.status === 'pending').length,
     },
     {
       value: 'in_progress',
       label: 'В работе',
-      count: tasks.filter((t) => t.status === 'in_progress').length,
+      count: currentTasks.filter((t) => t.status === 'in_progress').length,
     },
     {
       value: 'completed',
       label: 'Завершены',
-      count: tasks.filter((t) => t.status === 'completed' || t.status === 'confirmed')
+      count: currentTasks.filter((t) => t.status === 'completed' || t.status === 'confirmed' || t.status === 'late')
         .length,
     },
   ];
@@ -76,6 +85,37 @@ export default function TasksPage() {
           <Plus className="w-5 h-5" />
           <span className="hidden sm:inline">Создать</span>
         </Link>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('assigned_to_me')}
+          className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
+            activeTab === 'assigned_to_me'
+              ? 'bg-primary-600 text-white'
+              : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
+          }`}
+        >
+          Мне ({assignedToMeTasks.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('created_by_me')}
+          className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
+            activeTab === 'created_by_me'
+              ? 'bg-primary-600 text-white'
+              : 'bg-dark-800 text-dark-300 hover:bg-dark-700'
+          }`}
+        >
+          От меня ({createdByMeTasks.length})
+        </button>
       </div>
 
       {/* Filters */}

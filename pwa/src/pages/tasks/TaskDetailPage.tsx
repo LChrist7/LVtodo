@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getTask, updateTaskStatus, completeTask, confirmTask } from '@/services/taskService';
+import { getTask, updateTaskStatus, completeTask, confirmTask, disputeTask } from '@/services/taskService';
 import { Task } from '@/types';
 import { ROUTES } from '@/config/constants';
 import { formatTimeRemaining, isTaskLate } from '@/utils/gameLogic';
@@ -71,6 +71,24 @@ export default function TaskDetailPage() {
     } catch (error) {
       console.error('Failed to confirm task:', error);
       alert('Не удалось подтвердить задание');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDispute = async () => {
+    if (!task) return;
+    const confirmed = window.confirm('Вы уверены, что хотите оспорить выполнение задания? Оно вернется в статус "Ожидает".');
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      await disputeTask(task.id);
+      setTask({ ...task, status: 'pending' });
+      alert('Задание оспорено и возвращено в статус "Ожидает"');
+    } catch (error) {
+      console.error('Failed to dispute task:', error);
+      alert('Не удалось оспорить задание');
     } finally {
       setActionLoading(false);
     }
@@ -183,20 +201,30 @@ export default function TaskDetailPage() {
             </button>
           )}
 
-          {/* Button for assigner (creator) to confirm */}
+          {/* Buttons for assigner (creator) to confirm or dispute */}
           {isCreatedByMe && (task.status === 'completed' || task.status === 'late') && (
-            <button
-              onClick={handleConfirm}
-              disabled={actionLoading}
-              className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              {actionLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <CheckCircle className="w-5 h-5" />
-              )}
-              <span>Подтвердить выполнение</span>
-            </button>
+            <>
+              <button
+                onClick={handleConfirm}
+                disabled={actionLoading}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {actionLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <CheckCircle className="w-5 h-5" />
+                )}
+                <span>Подтвердить</span>
+              </button>
+              <button
+                onClick={handleDispute}
+                disabled={actionLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-5 h-5" />
+                <span>Оспорить</span>
+              </button>
+            </>
           )}
         </div>
       </div>
