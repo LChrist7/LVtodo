@@ -27,13 +27,24 @@ export default function TasksPage() {
         setError(null);
         const [assignedTasks, createdTasks] = await Promise.all([
           getUserTasks(user.id),
-          getCreatedTasks(user.id)
+          getCreatedTasks(user.id).catch(err => {
+            // If index is still building, return empty array
+            if (err.message?.includes('index') || err.message?.includes('building')) {
+              console.warn('Index for created tasks is still building');
+              return [];
+            }
+            throw err;
+          })
         ]);
         setAssignedToMeTasks(assignedTasks);
         setCreatedByMeTasks(createdTasks);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load tasks:', error);
-        setError('Не удалось загрузить задачи. Проверьте подключение к интернету.');
+        if (error.message?.includes('index') || error.message?.includes('building')) {
+          setError('⏳ Индексы Firebase еще строятся (это займет 5-15 минут после развертывания). Вкладка "От меня" временно недоступна. Вкладка "Мне" работает.');
+        } else {
+          setError('Не удалось загрузить задачи. Проверьте подключение к интернету.');
+        }
       } finally {
         setLoading(false);
       }
@@ -89,8 +100,24 @@ export default function TasksPage() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-6">
+        <div className={`${
+          error.includes('⏳')
+            ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-400'
+            : 'bg-red-500/10 border-red-500/50 text-red-400'
+        } border px-4 py-3 rounded-lg mb-6`}>
           {error}
+          {error.includes('⏳') && (
+            <div className="mt-2 text-sm">
+              <a
+                href="https://console.firebase.google.com/project/lvtodo/firestore/indexes"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-yellow-300"
+              >
+                Проверить статус индексов →
+              </a>
+            </div>
+          )}
         </div>
       )}
 
