@@ -124,26 +124,37 @@ export const deleteTask = async (taskId: string): Promise<void> => {
 };
 
 /**
- * Complete task and award points/XP
+ * Complete task (by assignee) - does NOT award points yet
  */
 export const completeTask = async (
   taskId: string,
-  userId: string,
   isLate: boolean
+): Promise<void> => {
+  await updateTaskStatus(taskId, isLate ? 'late' : 'completed');
+};
+
+/**
+ * Confirm task completion (by assigner) and award points/XP
+ */
+export const confirmTask = async (
+  taskId: string,
+  userId: string
 ): Promise<{ points: number; xp: number }> => {
   const task = await getTask(taskId);
   if (!task) {
     throw new Error('Task not found');
   }
 
+  // Calculate rewards
+  const isLate = task.status === 'late';
   const points = calculateTaskPoints(task.difficulty, isLate);
   const xp = calculateTaskXP(task.difficulty);
 
-  // Update task status
-  await updateTaskStatus(taskId, isLate ? 'late' : 'completed');
+  // Update task status to confirmed
+  await updateTaskStatus(taskId, 'confirmed', userId);
 
   // Update user stats
-  const userRef = doc(db, 'users', userId);
+  const userRef = doc(db, 'users', task.assignedTo);
   const userSnap = await getDoc(userRef);
 
   if (userSnap.exists()) {
@@ -157,9 +168,9 @@ export const completeTask = async (
   // Create history entry
   await addDoc(collection(db, 'taskHistory'), {
     taskId,
-    userId,
+    userId: task.assignedTo,
     groupId: task.groupId,
-    action: isLate ? 'late' : 'completed',
+    action: 'confirmed',
     timestamp: serverTimestamp(),
     metadata: { points, xp },
   });
