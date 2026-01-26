@@ -79,7 +79,7 @@
       ]
     },
     {
-      "collectionGroup": "task_history",
+      "collectionGroup": "taskHistory",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -87,11 +87,11 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "groupId",
+          "fieldPath": "action",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "completedAt",
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]

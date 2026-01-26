@@ -23,8 +23,10 @@ service cloud.firestore {
       // Others can update specific fields for game mechanics
       allow update: if isAuthenticated() && (
         isOwner(userId) ||
-        // Allow updating points, xp (task rewards)
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'xp']) ||
+        // Allow updating points and/or xp (task rewards)
+        request.resource.data.diff(resource.data).affectedKeys().hasAll(['points', 'xp']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp']) ||
         // Allow updating groupIds (when joining groups)
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['groupIds'])
       );
